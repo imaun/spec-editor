@@ -1,13 +1,9 @@
-﻿using System.Reflection.Metadata;
-using System.Text;
+﻿using System.Text;
+using Catdocs.Lib.OpenAPI;
 using Microsoft.OpenApi;
-using Microsoft.OpenApi.Extensions;
-using Microsoft.OpenApi.Interfaces;
-using Microsoft.OpenApi.Models;
-using Microsoft.OpenApi.Readers;
-using Microsoft.OpenApi.Writers;
+using Microsoft.OpenApi.Reader;
 
-namespace Catdocs.Lib.OpenAPI;
+namespace Catdocs.OpenAPI;
 
 public static class OpenApiExtensions
 {
@@ -32,10 +28,10 @@ public static class OpenApiExtensions
     public static string ToStr(this OpenApiFormat format)
     {
         if (format is OpenApiFormat.Json)
-            return "JSON";
+            return OpenApiConstants.Json;
 
         if (format is OpenApiFormat.Yaml)
-            return "YAML";
+            return OpenApiConstants.Yaml;
 
         return "Unknown";
     }
@@ -43,10 +39,10 @@ public static class OpenApiExtensions
     public static string GetFormatFileExtension(this OpenApiFormat format)
     {
         if (format is OpenApiFormat.Json)
-            return "json";
+            return OpenApiConstants.Json;
 
         if (format is OpenApiFormat.Yaml)
-            return "yaml";
+            return OpenApiConstants.Yaml;
 
         return "txt";
     }
@@ -55,17 +51,17 @@ public static class OpenApiExtensions
     {
         return elementTypeName switch
         {
-            OpenApiConstants.Schema => ReferenceType.Schema,
-            OpenApiConstants.Parameter => ReferenceType.Parameter,
-            OpenApiConstants.Callback => ReferenceType.Callback,
-            OpenApiConstants.Example => ReferenceType.Example,
-            OpenApiConstants.Header => ReferenceType.Header,
-            OpenApiConstants.Link => ReferenceType.Link,
-            OpenApiConstants.Response => ReferenceType.Response,
-            OpenApiConstants.RequestBody => ReferenceType.RequestBody,
-            OpenApiConstants.Path => ReferenceType.Path,
-            OpenApiConstants.Tag => ReferenceType.Tag,
-            OpenApiConstants.SecurityScheme => ReferenceType.SecurityScheme,
+            Constants.Schema => ReferenceType.Schema,
+            Constants.Parameter => ReferenceType.Parameter,
+            Constants.Callback => ReferenceType.Callback,
+            Constants.Example => ReferenceType.Example,
+            Constants.Header => ReferenceType.Header,
+            Constants.Link => ReferenceType.Link,
+            Constants.Response => ReferenceType.Response,
+            Constants.RequestBody => ReferenceType.RequestBody,
+            Constants.Path => ReferenceType.PathItem,
+            Constants.Tag => ReferenceType.Tag,
+            Constants.SecurityScheme => ReferenceType.SecurityScheme,
             _ => throw new NotSupportedException("OpenAPI type not supported!")
         };
     }
@@ -127,48 +123,4 @@ public static class OpenApiExtensions
         return sb.ToString();
     }
     
-    public static T CreateCopyOfElement<T>(this T element, string elementTypeName, OpenApiFormat format, OpenApiSpecVersion version) 
-        where T : IOpenApiReferenceable
-    {
-        using var stream = new MemoryStream();
-
-        using var streamWriter = new StreamWriter(stream, Encoding.UTF8);
-        if (format is OpenApiFormat.Json)
-        {
-            var jsonWriter = new OpenApiJsonWriter(streamWriter);
-            if (version is OpenApiSpecVersion.OpenApi3_0)
-            {
-                element.SerializeAsV3(jsonWriter);
-            }
-            else
-            {
-                element.SerializeAsV2(jsonWriter);
-            }
-        }
-        else
-        {
-            var yamlWriter = new OpenApiJsonWriter(streamWriter);
-            if (version is OpenApiSpecVersion.OpenApi3_0)
-            {
-                element.SerializeAsV3(yamlWriter);
-            }
-            else
-            {
-                element.SerializeAsV2(yamlWriter);
-            }
-        }
-        streamWriter.Flush();
-
-        stream.Position = 0;
-        
-        var reader = new OpenApiStreamReader();
-        var copy = reader.ReadFragment<T>(stream, version, out var diagnostic);
-
-        if (diagnostic.Errors.Any())
-        {
-            SpecLogger.LogError($"Cannot create deep copy of element of type: {elementTypeName}!");
-        }
-
-        return copy;
-    }
 }
