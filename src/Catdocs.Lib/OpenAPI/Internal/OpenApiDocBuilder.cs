@@ -1,10 +1,6 @@
-﻿using Catdocs.Lib.OpenAPI.Extensions;
-using Microsoft.OpenApi;
-using Microsoft.OpenApi.Interfaces;
-using Microsoft.OpenApi.Models;
-using Microsoft.OpenApi.Readers;
+﻿using Microsoft.OpenApi;
 
-namespace Catdocs.Lib.OpenAPI.Internal;
+namespace Catdocs.OpenAPI.Internal;
 
 internal class OpenApiDocBuilder
 {
@@ -34,7 +30,7 @@ internal class OpenApiDocBuilder
         var api_paths = new OpenApiPaths();
         foreach (var path in _document.Paths)
         {
-            if (path.Value.Reference is not null)
+            if (path.Value is not null)
             {   
                 var pathRef = path.Value.Reference.ExternalResource;
                 var filePath = Path.Combine(_inputDir, pathRef);
@@ -54,14 +50,14 @@ internal class OpenApiDocBuilder
 
         _document.Components ??= new OpenApiComponents();
 
-        _document.Components.Schemas = ResolveReferences<OpenApiSchema>();
-        _document.Components.Callbacks = ResolveReferences<OpenApiCallback>();
-        _document.Components.Examples = ResolveReferences<OpenApiExample>();
-        _document.Components.Parameters = ResolveReferences<OpenApiParameter>();
-        _document.Components.Headers = ResolveReferences<OpenApiHeader>();
-        _document.Components.Responses = ResolveReferences<OpenApiResponse>();
-        _document.Components.RequestBodies = ResolveReferences<OpenApiRequestBody>();
-        _document.Components.Links = ResolveReferences<OpenApiLink>();
+        _document.Components.Schemas = ResolveReferences<IOpenApiSchema>();
+        _document.Components.Callbacks = ResolveReferences<IOpenApiCallback>();
+        _document.Components.Examples = ResolveReferences<IOpenApiExample>();
+        _document.Components.Parameters = ResolveReferences<IOpenApiParameter>();
+        _document.Components.Headers = ResolveReferences<IOpenApiHeader>();
+        _document.Components.Responses = ResolveReferences<IOpenApiResponse>();
+        _document.Components.RequestBodies = ResolveReferences<IOpenApiRequestBody>();
+        _document.Components.Links = ResolveReferences<IOpenApiLink>();
 
         return _document;
     }
