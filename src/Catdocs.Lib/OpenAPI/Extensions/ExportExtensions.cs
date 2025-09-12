@@ -1,12 +1,10 @@
-﻿using System.Text;
-using System.Threading.Tasks;
-using Microsoft.OpenApi;
+﻿using Microsoft.OpenApi;
 
 namespace Catdocs.OpenAPI.Extensions;
 
 public static class ExportExtensions
 {
-    
+
     public static string GetOpenApiElementTypeName<T>(T element) where T : IOpenApiReferenceable
     {
         ArgumentNullException.ThrowIfNull(element);
@@ -146,22 +144,22 @@ public static class ExportExtensions
 
 
     public static async Task<string> SerializeElementAsync<T>(
-        this T element, OpenApiSpecVersion version, OpenApiFormat format, CancellationToken cancellationToken = default) where T: IOpenApiSerializable
+        this T element, OpenApiSpecVersion version, OpenApiFormat format, CancellationToken cancellationToken = default) where T : IOpenApiSerializable
     {
         using var stream = new MemoryStream();
-        
+
         if (format is OpenApiFormat.Json)
         {
             //var jsonWriter = new OpenApiJsonWriter(new StreamWriter(stream, Encoding.UTF8));
             await element.SerializeAsJsonAsync(stream, version, cancellationToken).ConfigureAwait(false);
         }
-        else if(format is OpenApiFormat.Yaml)
+        else if (format is OpenApiFormat.Yaml)
         {
             // var yamlWriter = new OpenApiYamlWriter(new StreamWriter(stream, Encoding.UTF8));
             await element.SerializeAsYamlAsync(stream, version, cancellationToken).ConfigureAwait(false);
         }
         stream.Seek(0, SeekOrigin.Begin);
-        
+
         return await new StreamReader(stream).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -180,7 +178,7 @@ public static class ExportExtensions
         }
 
         stream.Seek(0, SeekOrigin.Begin);
-        
+
         // document.Serialize(stream, version, format, new OpenApiWriterSettings
         // {
         //     InlineLocalReferences = true,
@@ -190,98 +188,63 @@ public static class ExportExtensions
         return await new StreamReader(stream).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public static void SaveDocumentToFile(
-        this OpenApiDocument document, OpenApiSpecVersion version, OpenApiFormat format, string filename)
-    {
-        using var stream = new FileStream(filename, FileMode.Create);
-        if (format is OpenApiFormat.Yaml)
-        {
-            var yamlWriter = new OpenApiYamlWriter(new StreamWriter(stream));
-            if (version is OpenApiSpecVersion.OpenApi3_0)
-            {
-                document.SerializeAsV3(yamlWriter);    
-            }
-            else
-            {
-                document.SerializeAsV2(yamlWriter);
-            }
-            yamlWriter.Flush();
-        }
-        else if(format is OpenApiFormat.Json)
-        {
-            var jsonWriter = new OpenApiJsonWriter(new StreamWriter(stream));
-            if (version is OpenApiSpecVersion.OpenApi3_0)
-            {
-                document.SerializeAsV3(jsonWriter);    
-            }
-            else
-            {
-                document.SerializeAsV2(jsonWriter);
-            }
-            jsonWriter.Flush();
-        }
-        //NOT SUPPORTED!
-        else
-        {
-            SpecLogger.Log("NOT SUPPORTED DOCUMENT FORMAT!");
-        }
-    }
-
     public static IEnumerable<KeyValuePair<string, T>> GetComponentsWithType<T>(
         this OpenApiDocument document, string elementType) where T : IOpenApiReferenceable
     {
+        ArgumentNullException.ThrowIfNull(document, nameof(document));
+
         switch (elementType)
         {
-            case OpenApiConstants.Schema:
+            case Constants.Schema:
                 return document.Components.Schemas.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.Callback:
+            case Constants.Callback:
                 return document.Components.Callbacks.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.Parameter:
+            case Constants.Parameter:
                 return document.Components.Parameters.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.Example:
+            case Constants.Example:
                 return document.Components.Examples.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.Header:
+            case Constants.Header:
                 return document.Components.Headers.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.Link:
+            case Constants.Link:
                 return document.Components.Links.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.Response:
+            case Constants.Response:
                 return document.Components.Responses.Cast<KeyValuePair<string, T>>();
-            case OpenApiConstants.RequestBody:
+            case Constants.RequestBody:
                 return document.Components.RequestBodies.Cast<KeyValuePair<string, T>>();
-            
+
             default:
                 throw new ArgumentException($"OpenAPI type `{elementType}` not supported!");
         }
     }
 
-    
+
     public static void DeleteAllElementsOfType(this OpenApiComponents components, string elementTypeName)
     {
         switch (elementTypeName)
         {
-            case OpenApiConstants.Schema:
-                components.Schemas = new Dictionary<string, OpenApiSchema>();
+            case Constants.Schema:
+                components.Schemas = new Dictionary<string, IOpenApiSchema>();
                 break;
-            case OpenApiConstants.Parameter:
-                components.Parameters = new Dictionary<string, OpenApiParameter>();
+            case Constants.Parameter:
+                components.Parameters = new Dictionary<string, IOpenApiParameter>();
                 break;
-            case OpenApiConstants.Callback:
-                components.Callbacks = new Dictionary<string, OpenApiCallback>();
+            case Constants.Callback:
+                components.Callbacks = new Dictionary<string, IOpenApiCallback>();
                 break;
-            case OpenApiConstants.Example:
-                components.Examples = new Dictionary<string, OpenApiExample>();
+            case Constants.Example:
+                components.Examples = new Dictionary<string, IOpenApiExample>();
                 break;
-            case OpenApiConstants.Header:
-                components.Headers = new Dictionary<string, OpenApiHeader>();
+            case Constants.Header:
+                components.Headers = new Dictionary<string, IOpenApiHeader>();
                 break;
-            case OpenApiConstants.Link:
-                components.Links = new Dictionary<string, OpenApiLink>();
+            case Constants.Link:
+                components.Links = new Dictionary<string, IOpenApiLink>();
                 break;
-            case OpenApiConstants.Response:
-                components.Responses = new Dictionary<string, OpenApiResponse>();
+            case Constants.Response:
+                components.Responses = new Dictionary<string, IOpenApiResponse>();
                 break;
-            case OpenApiConstants.RequestBody:
-                components.RequestBodies = new Dictionary<string, OpenApiRequestBody>();
+            case Constants.RequestBody:
+                components.RequestBodies = new Dictionary<string, IOpenApiRequestBody>();
                 break;
         }
     }
@@ -289,103 +252,92 @@ public static class ExportExtensions
     public static void AddExternalReferenceFor(
         this OpenApiComponents components, string elementTypeName, string key, string filePath)
     {
+        ArgumentNullException.ThrowIfNull(components, nameof(components));
+        ArgumentException.ThrowIfNullOrEmpty(elementTypeName, nameof(elementTypeName));
+        ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
+        ArgumentException.ThrowIfNullOrEmpty(filePath, nameof(filePath));
+
+        var referenceId = ExtractReferenceId(key, filePath);
+
         switch (elementTypeName)
         {
-            case OpenApiConstants.Schema:
-                components.Schemas.Add(key, new OpenApiSchema
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+            case Constants.Schema:
+                components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
+                components.Schemas[key] = new OpenApiSchemaReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.Parameter:
-                components.Parameters.Add(key, new OpenApiParameter
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.Parameter:
+                components.Parameters ??= new Dictionary<string, IOpenApiParameter>();
+                components.Parameters[key] = new OpenApiParameterReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.Callback:
-                components.Callbacks.Add(key, new OpenApiCallback
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.Callback:
+                components.Callbacks ??= new Dictionary<string, IOpenApiCallback>();
+                components.Callbacks[key] = new OpenApiCallbackReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.Example:
-                components.Examples.Add(key, new OpenApiExample
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.Example:
+                components.Examples ??= new Dictionary<string, IOpenApiExample>();
+                components.Examples[key] = new OpenApiExampleReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.Header:
-                components.Headers.Add(key, new OpenApiHeader
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.Header:
+                components.Headers ??= new Dictionary<string, IOpenApiHeader>();
+                components.Headers[key] = new OpenApiHeaderReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.Link:
-                components.Links.Add(key, new OpenApiLink
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.Link:
+                components.Links ??= new Dictionary<string, IOpenApiLink>();
+                components.Links[key] = new OpenApiLinkReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.Response:
-                components.Responses.Add(key, new OpenApiResponse
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.Response:
+                components.Responses ??= new Dictionary<string, IOpenApiResponse>();
+                components.Responses[key] = new OpenApiResponseReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
-            
-            case OpenApiConstants.RequestBody:
-                components.RequestBodies.Add(key, new OpenApiRequestBody
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = key,
-                        Type = elementTypeName.GetOpenApiReferenceType(),
-                        ExternalResource = filePath
-                    }
-                });
+
+            case Constants.RequestBody:
+                components.RequestBodies ??= new Dictionary<string, IOpenApiRequestBody>();
+                components.RequestBodies[key] = new OpenApiRequestBodyReference(
+                    referenceId: referenceId,
+                    hostDocument: null,
+                    externalResource: filePath);
                 break;
+
+            default:
+                throw new NotSupportedException($"Unsupported element type '{elementTypeName}'.");
         }
+    }
+    
+    private static string ExtractReferenceId(string fallbackId, string filePath)
+    {
+        // Examples:
+        //  "../schemas/pet.yaml#/components/schemas/Pet" -> "components/schemas/Pet"
+        //  "../components.yaml#/components/parameters/ApiKeyHeader" -> "components/parameters/ApiKeyHeader"
+        var idx = filePath.IndexOf("#/", StringComparison.Ordinal);
+        if (idx >= 0 && idx + 2 < filePath.Length)
+            return filePath[(idx + 2)..];
+        return fallbackId;
     }
 }
