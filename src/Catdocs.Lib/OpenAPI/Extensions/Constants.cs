@@ -1,6 +1,6 @@
-﻿namespace Catdocs.Lib.OpenAPI;
+﻿namespace Catdocs.OpenAPI;
 
-public static class OpenApiConstants
+internal static class Constants
 {
     public const string Path = "Path";
     public const string Path_Dir = "paths";

@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Readers;
 using Microsoft.OpenApi.Services;
 using System.Diagnostics;
 using Catdocs.Lib.OpenAPI.Internal;
+using Catdocs.Lib.OpenAPI.Extensions;
 
 namespace Catdocs.Lib.OpenAPI;
 

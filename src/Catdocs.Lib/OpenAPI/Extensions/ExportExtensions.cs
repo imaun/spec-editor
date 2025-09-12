@@ -1,11 +1,8 @@
 ﻿using System.Text;
+using System.Threading.Tasks;
 using Microsoft.OpenApi;
-using Microsoft.OpenApi.Extensions;
-using Microsoft.OpenApi.Interfaces;
-using Microsoft.OpenApi.Models;
-using Microsoft.OpenApi.Writers;
 
-namespace Catdocs.Lib.OpenAPI;
+namespace Catdocs.OpenAPI.Extensions;
 
 public static class ExportExtensions
 {
@@ -16,15 +13,15 @@ public static class ExportExtensions
 
         return element switch
         {
-            OpenApiSchema => OpenApiConstants.Schema,
-            OpenApiParameter => OpenApiConstants.Parameter,
-            OpenApiExample => OpenApiConstants.Example,
-            OpenApiHeader => OpenApiConstants.Header,
-            OpenApiResponse => OpenApiConstants.Response,
-            OpenApiRequestBody => OpenApiConstants.RequestBody,
-            OpenApiLink => OpenApiConstants.Link,
-            OpenApiCallback => OpenApiConstants.Callback,
-            OpenApiSecurityScheme => OpenApiConstants.SecurityScheme,
+            OpenApiSchema => Constants.Schema,
+            OpenApiParameter => Constants.Parameter,
+            OpenApiExample => Constants.Example,
+            OpenApiHeader => Constants.Header,
+            OpenApiResponse => Constants.Response,
+            OpenApiRequestBody => Constants.RequestBody,
+            OpenApiLink => Constants.Link,
+            OpenApiCallback => Constants.Callback,
+            OpenApiSecurityScheme => Constants.SecurityScheme,
             _ => throw new NotSupportedException("OpenAPI type not supported!")
         };
     }
@@ -33,47 +30,47 @@ public static class ExportExtensions
     {
         if (type == typeof(OpenApiSchema))
         {
-            return OpenApiConstants.Schema;
+            return Constants.Schema;
         }
 
         if (type == typeof(OpenApiParameter))
         {
-            return OpenApiConstants.Parameter;
+            return Constants.Parameter;
         }
 
         if (type == typeof(OpenApiExample))
         {
-            return OpenApiConstants.Example;
+            return Constants.Example;
         }
 
         if (type == typeof(OpenApiHeader))
         {
-            return OpenApiConstants.Header;
+            return Constants.Header;
         }
 
         if (type == typeof(OpenApiResponse))
         {
-            return OpenApiConstants.Response;
+            return Constants.Response;
         }
 
         if (type == typeof(OpenApiRequestBody))
         {
-            return OpenApiConstants.RequestBody;
+            return Constants.RequestBody;
         }
 
         if (type == typeof(OpenApiLink))
         {
-            return OpenApiConstants.Link;
+            return Constants.Link;
         }
 
         if (type == typeof(OpenApiCallback))
         {
-            return OpenApiConstants.Callback;
+            return Constants.Callback;
         }
 
         if (type == typeof(OpenApiSecurityScheme))
         {
-            return OpenApiConstants.SecurityScheme;
+            return Constants.SecurityScheme;
         }
 
         throw new NotSupportedException("OpenAPI type not supported!");
@@ -85,14 +82,14 @@ public static class ExportExtensions
 
         return element switch
         {
-            OpenApiSchema => OpenApiConstants.Schema_Dir,
-            OpenApiParameter => OpenApiConstants.Parameter_Dir,
-            OpenApiExample => OpenApiConstants.Example_Dir,
-            OpenApiHeader => OpenApiConstants.Header_Dir,
-            OpenApiResponse => OpenApiConstants.Response_Dir,
-            OpenApiRequestBody => OpenApiConstants.RequestBody_Dir,
-            OpenApiLink => OpenApiConstants.Link_Dir,
-            OpenApiCallback => OpenApiConstants.Callback_Dir,
+            OpenApiSchema => Constants.Schema_Dir,
+            OpenApiParameter => Constants.Parameter_Dir,
+            OpenApiExample => Constants.Example_Dir,
+            OpenApiHeader => Constants.Header_Dir,
+            OpenApiResponse => Constants.Response_Dir,
+            OpenApiRequestBody => Constants.RequestBody_Dir,
+            OpenApiLink => Constants.Link_Dir,
+            OpenApiCallback => Constants.Callback_Dir,
             _ => throw new NotSupportedException("OpenAPI type not supported!")
         };
     }
@@ -101,85 +98,96 @@ public static class ExportExtensions
     {
         if (type == typeof(OpenApiSchema))
         {
-            return OpenApiConstants.Schema_Dir;
+            return Constants.Schema_Dir;
         }
 
         if (type == typeof(OpenApiParameter))
         {
-            return OpenApiConstants.Parameter_Dir;
+            return Constants.Parameter_Dir;
         }
 
         if (type == typeof(OpenApiExample))
         {
-            return OpenApiConstants.Example_Dir;
+            return Constants.Example_Dir;
         }
 
         if (type == typeof(OpenApiHeader))
         {
-            return OpenApiConstants.Header_Dir;
+            return Constants.Header_Dir;
         }
 
         if (type == typeof(OpenApiResponse))
         {
-            return OpenApiConstants.Response_Dir;
+            return Constants.Response_Dir;
         }
 
         if (type == typeof(OpenApiRequestBody))
         {
-            return OpenApiConstants.RequestBody_Dir;
+            return Constants.RequestBody_Dir;
         }
 
         if (type == typeof(OpenApiLink))
         {
-            return OpenApiConstants.Link_Dir;
+            return Constants.Link_Dir;
         }
 
         if (type == typeof(OpenApiCallback))
         {
-            return OpenApiConstants.Callback_Dir;
+            return Constants.Callback_Dir;
         }
 
         if (type == typeof(OpenApiSecurityScheme))
         {
-            return OpenApiConstants.SecurityScheme_Dir;
+            return Constants.SecurityScheme_Dir;
         }
 
         throw new NotSupportedException("OpenAPI type not supported!");
     }
 
 
-    public static string SerializeElement<T>(
-        this T element, OpenApiSpecVersion version, OpenApiFormat format) where T: IOpenApiSerializable
+    public static async Task<string> SerializeElementAsync<T>(
+        this T element, OpenApiSpecVersion version, OpenApiFormat format, CancellationToken cancellationToken = default) where T: IOpenApiSerializable
     {
         using var stream = new MemoryStream();
+        
         if (format is OpenApiFormat.Json)
         {
-            var jsonWriter = new OpenApiJsonWriter(new StreamWriter(stream, Encoding.UTF8));
-            element.Serialize(jsonWriter, version);
+            //var jsonWriter = new OpenApiJsonWriter(new StreamWriter(stream, Encoding.UTF8));
+            await element.SerializeAsJsonAsync(stream, version, cancellationToken).ConfigureAwait(false);
         }
-        else
+        else if(format is OpenApiFormat.Yaml)
         {
-            var yamlWriter = new OpenApiYamlWriter(new StreamWriter(stream, Encoding.UTF8));
-            element.Serialize(yamlWriter, version);
+            // var yamlWriter = new OpenApiYamlWriter(new StreamWriter(stream, Encoding.UTF8));
+            await element.SerializeAsYamlAsync(stream, version, cancellationToken).ConfigureAwait(false);
         }
-        stream.Position = 0;
+        stream.Seek(0, SeekOrigin.Begin);
         
-        return new StreamReader(stream).ReadToEnd();
+        return await new StreamReader(stream).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 
-
-    public static string SerializeDocument(
-        this OpenApiDocument document, OpenApiSpecVersion version, OpenApiFormat format)
+    public static async Task<string> SerializeDocumentAsync(
+        this OpenApiDocument document, OpenApiSpecVersion version, OpenApiFormat format, CancellationToken cancellationToken = default)
     {
         using var stream = new MemoryStream();
-        document.Serialize(stream, version, format, new OpenApiWriterSettings
-        {
-            InlineLocalReferences = true,
-            InlineExternalReferences = true
-        });
-        stream.Position = 0;
 
-        return new StreamReader(stream).ReadToEnd();
+        if (format is OpenApiFormat.Json)
+        {
+            await document.SerializeAsJsonAsync(stream, version, cancellationToken).ConfigureAwait(false);
+        }
+        else if (format is OpenApiFormat.Yaml)
+        {
+            await document.SerializeAsYamlAsync(stream, version, cancellationToken).ConfigureAwait(false);
+        }
+
+        stream.Seek(0, SeekOrigin.Begin);
+        
+        // document.Serialize(stream, version, format, new OpenApiWriterSettings
+        // {
+        //     InlineLocalReferences = true,
+        //     InlineExternalReferences = true
+        // });
+
+        return await new StreamReader(stream).ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public static void SaveDocumentToFile(
